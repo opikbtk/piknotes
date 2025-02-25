@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="id">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>My Notes App</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <link
+      rel="stylesheet"
+      href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css"
+    />
+    <style>
+      /* Custom CSS */
+      body {
+        background: #f0f2f5;
+        min-height: 100vh;
+      }
+
+      .main-container {
+        max-width: 1200px;
+        margin: 2rem auto;
+        padding: 0 15px;
+      }
+
+      .note-editor {
+        background: white;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+        margin-bottom: 2rem;
+      }
+
+      .note-card {
+        background: white;
+        border: none;
+        border-radius: 12px;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        position: relative;
+      }
+
+      .note-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 8px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .search-box {
+        max-width: 500px;
+        margin: 1rem auto;
+      }
+
+      .empty-state {
+        opacity: 0.5;
+        text-align: center;
+        padding: 4rem 0;
+      }
+
+      .delete-btn {
+        position: absolute;
+        top: 10px;
+        right: 10px;
+        opacity: 0;
+        transition: opacity 0.2s;
+      }
+
+      .note-card:hover .delete-btn {
+        opacity: 1;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="main-container">
+      <!-- Header -->
+      <header class="text-center mb-5">
+        <h1 class="display-4 fw-bold text-primary">
+          <i class="fas fa-book me-2"></i>Pik Notes
+        </h1>
+      </header>
+
+      <!-- Search Box -->
+      <div class="search-box">
+        <div class="input-group">
+          <input
+            type="text"
+            id="searchInput"
+            class="form-control"
+            placeholder="Cari catatan..."
+          />
+          <span class="input-group-text">
+            <i class="fas fa-search"></i>
+          </span>
+        </div>
+      </div>
+
+      <!-- Note Editor -->
+      <div class="note-editor p-4 mb-4">
+        <input
+          type="text"
+          id="noteTitle"
+          class="form-control mb-3 fs-5 border-0 shadow-none"
+          placeholder="Judul Catatan"
+        />
+
+        <textarea
+          id="noteContent"
+          class="form-control mb-3 border-0 shadow-none"
+          placeholder="Mulai menulis..."
+          rows="4"
+        ></textarea>
+
+        <div class="d-flex justify-content-end">
+          <button onclick="saveNote()" class="btn btn-primary px-4 py-2">
+            <i class="fas fa-save me-2"></i>Simpan
+          </button>
+        </div>
+      </div>
+
+      <!-- Notes Grid -->
+      <div id="notesContainer" class="row g-4">
+        <!-- Notes akan muncul di sini -->
+      </div>
+
+      <!-- Empty State -->
+      <div id="emptyState" class="empty-state">
+        <i class="fas fa-clipboard-list fa-4x mb-3"></i>
+        <h4>Belum ada catatan</h4>
+        <p>Mulai dengan menulis catatan pertama Anda!</p>
+      </div>
+    </div>
+
+    <script>
+      // Data Catatan
+      let notes = JSON.parse(localStorage.getItem("notes")) || [];
+
+      // Fungsi Simpan Catatan
+      function saveNote() {
+        const title = document.getElementById("noteTitle").value.trim();
+        const content = document.getElementById("noteContent").value.trim();
+
+        if (!title || !content) {
+          showAlert("Judul dan isi catatan tidak boleh kosong!", "danger");
+          return;
+        }
+
+        const newNote = {
+          id: Date.now(),
+          title,
+          content,
+          date: new Date().toLocaleString("id-ID"),
+          pinned: false,
+        };
+
+        notes.unshift(newNote);
+        updateStorage();
+        renderNotes();
+        clearInputs();
+        showAlert("Catatan berhasil disimpan!", "success");
+      }
+
+      // Fungsi Render Catatan
+      function renderNotes(filteredNotes = notes) {
+        const container = document.getElementById("notesContainer");
+        const emptyState = document.getElementById("emptyState");
+
+        container.innerHTML = "";
+
+        if (filteredNotes.length === 0) {
+          emptyState.style.display = "block";
+          return;
+        }
+
+        emptyState.style.display = "none";
+
+        filteredNotes.forEach((note) => {
+          const noteElement = document.createElement("div");
+          noteElement.className = "col-12 col-md-6 col-lg-4";
+          noteElement.innerHTML = `
+                    <div class="note-card p-3 h-100">
+                        <button onclick="deleteNote(${note.id})" 
+                                class="delete-btn btn btn-danger btn-sm">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                        <h4 class="mb-3">${note.title}</h4>
+                        <p class="text-muted">${note.content}</p>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>${note.date}
+                        </small>
+                    </div>
+                `;
+          container.appendChild(noteElement);
+        });
+      }
+
+      // Fungsi Hapus Catatan
+      function deleteNote(id) {
+        notes = notes.filter((note) => note.id !== id);
+        updateStorage();
+        renderNotes();
+        showAlert("Catatan berhasil dihapus!", "warning");
+      }
+
+      // Fungsi Pencarian
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        const searchTerm = e.target.value.toLowerCase();
+        const filteredNotes = notes.filter(
+          (note) =>
+            note.title.toLowerCase().includes(searchTerm) ||
+            note.content.toLowerCase().includes(searchTerm)
+        );
+        renderNotes(filteredNotes);
+      });
+
+      // Helper Functions
+      function updateStorage() {
+        localStorage.setItem("notes", JSON.stringify(notes));
+      }
+
+      function clearInputs() {
+        document.getElementById("noteTitle").value = "";
+        document.getElementById("noteContent").value = "";
+      }
+
+      function showAlert(message, type) {
+        const alert = document.createElement("div");
+        alert.className = `alert alert-${type} position-fixed top-0 end-0 m-3`;
+        alert.textContent = message;
+        document.body.appendChild(alert);
+
+        setTimeout(() => alert.remove(), 2000);
+      }
+
+      // Inisialisasi
+      document.addEventListener("DOMContentLoaded", () => {
+        renderNotes();
+      });
+    </script>
+  </body>
+</html>
